@@ -30,13 +30,14 @@ async function bootstrap() {
     const corsOriginsRaw = configService.get<string>('CORS_ORIGINS') ?? 'http://localhost:3001,http://127.0.0.1:3001,http://localhost:3000,http://127.0.0.1:3000, http://staff.theafricanthinktank.org,https://staff.theafricanthinktank.org, https://staff.theafricanthinktank.com,http://staff.theafricanthinktank.com';
     const allowedOrigins = corsOriginsRaw.split(',').map((o) => o.trim()).filter(Boolean);
     console.log('[TATT-Management-App] CORS allowed origins:', allowedOrigins);
+    if (process.env.NODE_ENV !== 'production') {
     app.enableCors({
         origin: allowedOrigins,
         methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     });
-
+    }
     // ── Security Edge Middleware ────────────────────────────────────────────────
     app.use(helmet({
         crossOriginResourcePolicy: { policy: 'cross-origin' },
