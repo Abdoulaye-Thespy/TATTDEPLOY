@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SystemSettingsService } from '../../modules/system-settings/system-settings.service';
 import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 interface MailOptions {
     to: string | string[];
@@ -19,8 +20,10 @@ export class MailService {
 
     constructor(
         private configService: ConfigService,
+        private readonly resend: Resend,
         private systemSettingsService: SystemSettingsService,
     ) {
+        this.resend = new Resend(this.configService.get('RESEND_API_KEY'));
         this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
     }
 
@@ -125,7 +128,8 @@ export class MailService {
         const resetLink = `${this.frontendUrl}/reset-password?token=${token}`;
 
         try {
-            await this.sendTransactionalMail({
+            const { error } = await this.resend.emails.send({
+                from: 'no-reply@theafricanthinktank.com', // Domaine vérifié sur Resend
                 to: email,
                 subject: 'TATT Password Reset Request',
                 html: `
@@ -137,11 +141,16 @@ export class MailService {
                     <p>If you did not request this, you can safely ignore this email.</p>
                 `,
             });
-            this.logger.log(`Password reset email dispatched successfully to ${email}`);
+
+            if (error) {
+                this.logger.error(`Resend error: ${error.message}`);
+                throw error;
+            }
+
+            this.logger.log(`✅ Password reset email sent to ${email}`);
         } catch (error) {
-            const err = error as Error;
-            this.logger.error(`Failed to send reset email to ${email}`, err.stack);
-            throw new Error(`Failed to send email: ${err.message}`);
+            this.logger.error(`❌ Failed to send reset email: ${error.message}`);
+            throw error;
         }
     }
 

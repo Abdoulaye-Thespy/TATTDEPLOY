@@ -497,15 +497,19 @@ export class AuthService {
         user.resetPasswordExpiresAt = expiresAt;
         await user.save();
 
+        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetTokenRaw}`;
+
         if (process.env.NODE_ENV === 'development') {
             this.logger.log(`[DEV] Password reset requested for ${user.email}. Raw token: ${resetTokenRaw}`);
-            this.logger.log(`[DEV] Reset link: ${process.env.FRONTEND_URL}/reset-password?token=${resetTokenRaw}`);
+            this.logger.log(`[DEV] Reset link: ${resetLink}`);
         }
 
         try {
+            // ✅ Appel correct avec deux arguments
             await this.mailService.sendPasswordReset(user.email, resetTokenRaw);
+            this.logger.log(`✅ Password reset email sent to ${user.email}`);
         } catch (mailError) {
-            this.logger.error(`Failed to send password reset email: ${mailError.message}`);
+            this.logger.error(`❌ Failed to send password reset email: ${mailError}`);
             if (process.env.NODE_ENV !== 'development') {
                 throw mailError;
             }
@@ -513,6 +517,7 @@ export class AuthService {
 
         return { message: 'If that email exists, a reset link has been sent.' };
     }
+
 
     // ─── RESET PASSWORD ──────────────────────────────────────────────────────
     async resetPassword(dto: ResetPasswordDto) {
