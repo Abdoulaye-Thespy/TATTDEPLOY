@@ -77,3 +77,20 @@ export class SubscribeDto {
     @IsString()
     paymentMethodId?: string;
 }
+
+export class ConfirmPaymentDto {
+  @ApiProperty({ example: 'cs_test_xxxxxxxxxxxxx' })
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
+
+  @ApiProperty({ example: 'UBUNTU', enum: CommunityTier })
+  @IsEnum(CommunityTier)
+  communityTier: string;
+
+  @ApiProperty({ example: 'MONTHLY', enum: ['MONTHLY', 'YEARLY'] })
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['MONTHLY', 'YEARLY'])
+  billingCycle: string;
+}

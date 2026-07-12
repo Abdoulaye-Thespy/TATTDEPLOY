@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { BadRequestException } from '@nestjs/common';
 import Stripe from 'stripe';
 
 import { User } from '../iam/entities/user.entity';
@@ -271,7 +272,7 @@ export class BillingService {
     @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
     async handleScheduledRenewalNotifications() {
         this.logger.log('Running scheduled renewal notifications check...');
-        
+
         // Notify those expiring in 7 days (standard)
         await this.notifyUpcomingRenewals();
 
@@ -469,7 +470,7 @@ export class BillingService {
         });
 
         const activeDiscounts = await this.discountRepo.findAll({
-            where: { 
+            where: {
                 isActive: true,
                 [Op.or]: [
                     { validUntil: null },
@@ -485,7 +486,7 @@ export class BillingService {
                 const ps = Array.isArray(d.applicablePlans) ? d.applicablePlans : [];
                 return ps.includes(plan.tier);
             });
-            
+
             if (discount) {
                 planData.activeDiscount = {
                     code: discount.code,
@@ -513,7 +514,7 @@ export class BillingService {
             user.communityTier = CommunityTier.FREE;
             user.subscriptionExpiresAt = null;
             await user.save();
-            return { 
+            return {
                 message: 'Joined Free tier successfully.',
                 user: {
                     id: user.id,
@@ -632,8 +633,8 @@ export class BillingService {
                 referenceNumber: `SUB-${Date.now()}`,
             } as any);
 
-            return { 
-                message: `${tier} subscription active.`, 
+            return {
+                message: `${tier} subscription active.`,
                 expiresAt,
                 user: {
                     id: user.id,
@@ -684,4 +685,64 @@ export class BillingService {
             throw new Error('Failed to fetch financial metrics');
         }
     }
+
+    /**
+     * Confirme un paiement Stripe Checkout (paiement unique) et active le plan pour l'utilisateur.
+     * @param userId ID de l'utilisateur
+     * @param sessionId ID de la session Stripe
+     * @param tier Plan choisi
+     * @param cycle Cycle de facturation (MONTHLY / YEARLY)
+     */
+    async confirmPaymentAndSubscribe(
+        userId: string,
+        sessionId: string,
+        tier: CommunityTier,
+        cycle: 'MONTHLY' | 'YEARLY',
+    ) {
+        // 1. Récupérer la session Stripe
+        const session = await this.stripe.checkout.sessions.retrieve(sessionId);
+
+        // 2. Vérifier le statut du paiement
+        if (session.payment_status !== 'paid') {
+            throw new BadRequestException('Le paiement n\'est pas encore complété.');
+        }
+
+        // 3. (Optionnel) Récupérer le paymentMethodId pour traçabilité
+        const paymentIntentId = session.payment_intent as string;
+        const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+        const paymentMethodId = paymentIntent.payment_method as string;
+
+        // 4. Mettre à jour l'utilisateur
+        const user = await this.userRepository.findByPk(userId);
+        if (!user) {
+            throw new BadRequestException('Utilisateur non trouvé');
+        }
+
+        // Mettre à jour le plan et le cycle
+        user.communityTier = tier;
+        user.billingCycle = cycle;
+
+        // Définir la date d'expiration (1 mois ou 1 an)
+        const durationMonths = cycle === 'YEARLY' ? 12 : 1;
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
+        user.subscriptionExpiresAt = expiresAt;
+
+        // Optionnel : stocker l'ID de session ou le paymentMethodId pour suivi
+        // user.stripeSessionId = sessionId;
+        // user.stripePaymentMethodId = paymentMethodId;
+
+        await user.save();
+
+        return {
+            message: `Plan ${tier} activé avec succès pour ${durationMonths} mois.`,
+            user: {
+                id: user.id,
+                communityTier: user.communityTier,
+                subscriptionExpiresAt: user.subscriptionExpiresAt,
+            },
+        };
+    }
 }
+
+

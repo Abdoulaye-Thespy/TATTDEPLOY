@@ -1,19 +1,17 @@
-# frontend/Dockerfile.dev (No build stage, just dev mode)
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
 COPY package-lock.json* ./
 
-# Install dependencies
 RUN npm install --legacy-peer-deps
 
-# Copy source code
+# ✅ Forcer l'installation de Stripe (même si non présent dans le lockfile)
+RUN npm install @stripe/stripe-js @stripe/react-stripe-js stripe --legacy-peer-deps
+
 COPY . .
 
 EXPOSE 3000
 
-# Run Next.js in development mode with hot reload
 CMD ["npm", "run", "dev"]

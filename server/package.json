@@ -11,7 +11,8 @@
     "db:deploy": "npx ts-node -r tsconfig-paths/register scripts/deploy-production-db.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "start:dev": "nest start --watch"
   },
   "repository": {
     "type": "git",

@@ -6,7 +6,8 @@ import { SubscriberSchema, RevenueMetricsSchema, GenericMessageResponseSchema, S
 import { JwtAuthGuard } from '../iam/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { SystemRole } from '../iam/enums/roles.enum';
+import { SystemRole, CommunityTier } from '../iam/enums/roles.enum';
+import { ConfirmPaymentDto } from './dto/billing.schemas';
 
 @ApiTags('Billing & Subscriptions')
 @ApiExtraModels(SubscriberSchema, RevenueMetricsSchema, GenericMessageResponseSchema)
@@ -44,7 +45,7 @@ export class BillingController {
     async getPlans() {
         return this.billingService.getPlans();
     }
-    
+
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Subscribe to a membership plan (Onboarding/Upgrade)' })
     @UseGuards(JwtAuthGuard)
@@ -133,4 +134,25 @@ export class BillingController {
     async getRevenue() {
         return this.billingService.getRevenueMetrics();
     }
+
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Confirme un paiement Stripe Checkout et active l\'abonnement' })
+    @ApiResponse({ status: 200, description: 'Abonnement créé avec succès' })
+    @ApiResponse({ status: 400, description: 'Paiement non complété ou invalide' })
+    @Post('confirm-payment')
+    @UseGuards(JwtAuthGuard)
+    async confirmPayment(
+        @Req() req: any,
+        @Body() dto: ConfirmPaymentDto,
+    ) {
+        const userId = req.user.id;
+        return this.billingService.confirmPaymentAndSubscribe(
+            userId,
+            dto.sessionId,
+            dto.communityTier as CommunityTier,
+            dto.billingCycle as 'MONTHLY' | 'YEARLY',
+        );
+    }
+
+
 }
