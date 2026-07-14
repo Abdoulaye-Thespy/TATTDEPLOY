@@ -736,6 +736,10 @@ export class BillingService {
         expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
         user.subscriptionExpiresAt = expiresAt;
 
+        if (!user.flags.includes(AccountFlags.ONBOARDING_COMPLETED)) {
+            user.flags = [...user.flags, AccountFlags.ONBOARDING_COMPLETED];
+        }
+
         await user.save();
 
         // Log a revenue transaction
