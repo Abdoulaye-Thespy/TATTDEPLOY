@@ -27,7 +27,7 @@ async function bootstrap() {
     // Browsers treat http://localhost and http://127.0.0.1 as different origins.
     // Set CORS_ORIGINS in .env (comma-separated), e.g.:
     //   CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://192.168.1.231:3000
-    const corsOriginsRaw = configService.get<string>('CORS_ORIGINS') ?? 'http://localhost:3001,http://127.0.0.1:3001,http://localhost:3000,http://127.0.0.1:3000, http://staff.theafricanthinktank.org,https://staff.theafricanthinktank.org, https://staff.theafricanthinktank.com,http://staff.theafricanthinktank.com, http://community.theafricanthinktank.org,https://community.theafricanthinktank.org';
+    const corsOriginsRaw = configService.get<string>('CORS_ORIGINS') ?? 'http://localhost:3001,http://127.0.0.1:3001,http://localhost:3000,http://127.0.0.1:3000, http://staff.theafricanthinktank.org,https://staff.theafricanthinktank.org, https://staff.theafricanthinktank.com,http://staff.theafricanthinktank.com, http://community.theafricanthinktank.com,https://community.theafricanthinktank.com';
     const allowedOrigins = corsOriginsRaw.split(',').map((o) => o.trim()).filter(Boolean);
     console.log('[TATT-Management-App] CORS allowed origins:', allowedOrigins);
     if (process.env.NODE_ENV !== 'production') {
